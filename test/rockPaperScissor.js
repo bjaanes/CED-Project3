@@ -133,6 +133,31 @@ contract("RockPaperScissors", function(accounts) {
       );
     });
 
+    it("should fail if you try to accept more than once (or try to change your hand)", async () => {
+      await contract.createChallenge(rockHandPlayer1, {
+        from: account1,
+        value: 1000
+      });
+      await contract.acceptChallenge(rockHandPlayer1, rockHandPlayer2, {
+        from: account2,
+        value: 1000
+      });
+
+      try {
+        await contract.acceptChallenge(rockHandPlayer1, paperHandPlayer2, {
+          from: account2,
+          value: 1000
+        });
+      } catch (e) {
+        return true;
+      }
+
+      throw new Error(
+        "Should fail if trying to call acceptChallenge after already accepted"
+      );
+
+    });
+
     it("should set up everything when accepting a challnge", async () => {
       await contract.createChallenge(rockHandPlayer1, {
         from: account1,
@@ -988,6 +1013,23 @@ contract("RockPaperScissors", function(accounts) {
       const challenge = await contract.challenges(paperHandPlayer1);
 
       assert.strictEqual(getAmount(challenge).toString(10), "0");
+    });
+
+    it("should fail if trying to refund a challenge that is not yours", async () => {
+      await contract.createChallenge(paperHandPlayer1, {
+        from: account1,
+        value: 1000
+      });
+
+      try {
+        await contract.refundChallenge(paperHandPlayer1, {
+          from: account2
+        });
+      } catch (e) {
+        return true;
+      }
+
+      throw new Error("Should fail if trying to refund a challenge that is not yours");
     });
 
     it("should send back all the money", async () => {

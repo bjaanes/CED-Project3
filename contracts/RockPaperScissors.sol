@@ -59,6 +59,7 @@ contract RockPaperScissors {
     function acceptChallenge(bytes32 challengeHand, bytes32 player2SecretHand) public payable {
         Challenge storage challenge = challenges[challengeHand];
         require(challengeExists(challenge));
+        require(!challengeAccepted(challenge));
         require(msg.value == challenge.amount);
 
         challenge.player2 = msg.sender;
@@ -75,18 +76,22 @@ contract RockPaperScissors {
 
         bytes32 playersHand;
 
-        if (isPlayer1(challenge)) {
+        bool senderIsPlayer1 = isPlayer1(challenge);
+        bool senderIsPlayer2 = isPlayer2(challenge);
+        if (senderIsPlayer1) {
             playersHand = challengeHand;
-        } else if (isPlayer2(challenge)) {
+        } else if (senderIsPlayer2) {
             playersHand = challenge.player2Hand;
+        } else {
+            revert();
         }
 
         bytes32 handProof = generateHandProof(hand, revealCode);
         require(handProof == playersHand);
 
-        if (isPlayer1(challenge)) {
+        if (senderIsPlayer1) {
             challenge.player1HandRevealed = hand;
-        } else if (isPlayer2(challenge)) {
+        } else if (senderIsPlayer2) {
             challenge.player2HandRevealed = hand;
         }
         LogHandRevealed(msg.sender, challengeHand, hand, revealCode);
@@ -132,8 +137,7 @@ contract RockPaperScissors {
             challenge.result = 4;
 
             owed = challenge.amount * 2;
-        } else {
-            owed;
+        } else if (challenge.result != 4) {
             if (isPlayer1(challenge)) {
                 owed = challenge.owedToPlayer1;
                 challenge.owedToPlayer1 = 0;
@@ -141,6 +145,8 @@ contract RockPaperScissors {
                 owed = challenge.owedToPlayer2;
                 challenge.owedToPlayer2 = 0;
             }
+        } else {
+            revert();
         }
         LogWinningsWithdrawn(msg.sender, challengeHand, owed, challenge.result);
         msg.sender.transfer(owed);
@@ -150,6 +156,7 @@ contract RockPaperScissors {
         Challenge storage challenge = challenges[challengeHand];
         require(challengeExists(challenge));
         require(!challengeAccepted(challenge));
+        require(challenge.player1 == msg.sender);
         require(challenge.amount != 0);
 
         uint owed = challenge.amount;
@@ -185,5 +192,4 @@ contract RockPaperScissors {
     function challengeAccepted(Challenge challenge) internal pure returns(bool) {
         return challenge.player2Hand != "";
     }
-
 }
